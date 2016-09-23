@@ -43,9 +43,14 @@ defmodule Cafex.Producer do
   # API
   # ===================================================================
 
-  @spec start_link(topic_name :: String.t, opts :: options) :: GenServer.on_start
-  def start_link(topic_name, opts) do
-    GenServer.start_link __MODULE__, [topic_name, opts]
+  @spec start_link(producer :: atom, opts :: options) :: {:ok, pid, producer :: atom} |
+                                                         {:error, reason :: term}
+  def start_link(producer, opts) do
+    case GenServer.start_link __MODULE__, [producer, opts], name: producer do
+      {:ok, pid} -> {:ok, pid, producer}
+      {:error, {:already_started, pid}} -> {:ok, pid, producer}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
@@ -57,13 +62,13 @@ defmodule Cafex.Producer do
   * `:partition` The partition that data is being published to.
   * `:metadata` The metadata is used for partition in case of you wan't to use key to do that.
   """
-  @spec produce(pid :: pid, value :: binary, opts :: [Keyword.t]) :: :ok | {:error, term}
-  def produce(pid, value, opts \\ []) do
+  @spec produce(producer :: atom, value :: binary, opts :: [Keyword.t]) :: :ok | {:error, term}
+  def produce(producer, value, opts \\ []) do
     key        = Keyword.get(opts, :key)
     partition  = Keyword.get(opts, :partition)
     metadata   = Keyword.get(opts, :metadata)
     message    = %Message{key: key, value: value, partition: partition, metadata: metadata}
-    worker_pid = GenServer.call pid, {:get_worker, message}
+    worker_pid = GenServer.call producer, {:get_worker, message}
     Cafex.Producer.Worker.produce(worker_pid, message)
   end
 
@@ -74,30 +79,31 @@ defmodule Cafex.Producer do
 
   See `produce/3`
   """
-  @spec async_produce(pid :: pid, value :: binary, opts :: [Keyword.t]) :: :ok
-  def async_produce(pid, value, opts \\ []) do
+  @spec async_produce(producer :: atom, value :: binary, opts :: [Keyword.t]) :: :ok
+  def async_produce(producer, value, opts \\ []) do
     key        = Keyword.get(opts, :key)
     partition  = Keyword.get(opts, :partition)
 
     message    = %Message{key: key, value: value, partition: partition}
-    worker_pid = GenServer.call pid, {:get_worker, message}
+    worker_pid = GenServer.call producer, {:get_worker, message}
     Cafex.Producer.Worker.async_produce(worker_pid, message)
   end
 
-  @spec stop(pid :: pid) :: :ok
-  def stop(pid) do
-    GenServer.call pid, :stop
+  @spec stop(producer :: atom) :: :ok
+  def stop(name) do
+    GenServer.call name, :stop
   end
 
   # ===================================================================
   #  GenServer callbacks
   # ===================================================================
 
-  def init([topic_name, opts]) do
+  def init([_producer, opts]) do
     Process.flag(:trap_exit, true)
 
-    client_id        = Keyword.get(opts, :client_id, @default_client_id)
+    topic_name       = Keyword.fetch!(opts, :topic)
     brokers          = Keyword.get(opts, :brokers)
+    client_id        = Keyword.get(opts, :client_id, @default_client_id)
     acks             = Keyword.get(opts, :acks, @default_acks)
     batch_num        = Keyword.get(opts, :batch_num, @default_batch_num)
     # max_request_size = Keyword.get(opts, :max_request_size, @default_max_request_size)

@@ -13,9 +13,11 @@ defmodule Cafex do
 
   Read `Cafex.Producer` for more details.
   """
-  @spec start_producer(topic_name :: String.t, opts :: Cafex.Producer.options) :: Supervisor.on_start_child
-  def start_producer(topic_name, opts \\ []) do
-    Cafex.Supervisor.start_producer(topic_name, opts)
+  @spec start_producer(producer :: atom,
+                       opts :: Cafex.Producer.options) :: {:ok, producer :: atom} |
+                                                          {:error, reason :: term}
+  def start_producer(producer, opts \\ []) do
+    Cafex.Supervisor.start_producer(producer, opts)
   end
   defdelegate stop_producer(sup), to: Cafex.Supervisor
 

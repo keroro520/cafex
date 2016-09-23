@@ -10,12 +10,16 @@ defmodule Cafex.Producer.Supervisor do
     Supervisor.start_link __MODULE__, [], name: __MODULE__
   end
 
-  @spec start_producer(topic :: String.t, Cafex.Producer.options) :: Supervisor.on_start_child
-  def start_producer(topic, opts) do
-    Supervisor.start_child __MODULE__, [topic, opts]
+  @spec start_producer(producer :: atom, Cafex.Producer.options) :: {:ok, producer :: atom} |
+                                                                    {:error, reason :: term}
+  def start_producer(producer, opts) do
+    case Supervisor.start_child __MODULE__, [producer, opts] do
+      {:ok, _pid, ^producer} -> {:ok, producer}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
-  defdelegate stop_producer(pid), to: Cafex.Producer, as: :stop
+  defdelegate stop_producer(name), to: Cafex.Producer, as: :stop
 
   @doc false
   def init([]) do
