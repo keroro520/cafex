@@ -39,24 +39,24 @@ defmodule Cafex.Consumer.OffsetManager do
     GenServer.start_link __MODULE__, [coordinator, partitions, group, topic, opts]
   end
 
-  def stop(pid) do
-    GenServer.call pid, :stop
+  def stop(pid, timeout \\ 5000) do
+    GenServer.call pid, :stop, timeout
   end
 
-  def update_generation_id(pid, consumer_id, generation_id) do
-    GenServer.call pid, {:update_generation_id, consumer_id, generation_id}
+  def update_generation_id(pid, consumer_id, generation_id, timeout \\ 5000) do
+    GenServer.call pid, {:update_generation_id, consumer_id, generation_id}, timeout
   end
 
-  def commit(pid, partition, offset, metadata \\ "") do
-    GenServer.call pid, {:commit, partition, offset, metadata}
+  def commit(pid, partition, offset, metadata \\ "", timeout \\ 5000) do
+    GenServer.call pid, {:commit, partition, offset, metadata}, timeout
   end
 
-  def fetch(pid, partition, leader_conn) do
-    GenServer.call pid, {:fetch, partition, leader_conn}
+  def fetch(pid, partition, leader_conn, timeout \\ 5000) do
+    GenServer.call pid, {:fetch, partition, leader_conn}, timeout
   end
 
-  def reset(pid, partition, leader_conn) do
-    GenServer.call pid, {:reset, partition, leader_conn}
+  def reset(pid, partition, leader_conn, timeout \\ 5000) do
+    GenServer.call pid, {:reset, partition, leader_conn}, timeout
   end
 
   # ===================================================================

@@ -100,6 +100,7 @@ defmodule Cafex.Consumer.Worker do
     {:stop, :lock_timeout, state}
   end
 
+  @fetch_timeout 120_000
   @doc false
   def prepare(:timeout, %{partition: partition,
                           broker: {host, port},
@@ -108,7 +109,7 @@ defmodule Cafex.Consumer.Worker do
                           coordinator: coordinator} = state) do
     {:ok, conn} = conn_mod(state).start_link(host, port, client_id: client_id)
     {:ok, data} = handler.init(args)
-    {:ok, {offset, _}} = OffsetManager.fetch(coordinator, partition, conn)
+    {:ok, {offset, _}} = OffsetManager.fetch(coordinator, partition, conn, @fetch_timeout)
     {:next_state, :consuming, %{state | conn: conn,
                                         hwm_offset: offset,
                                         handler: handler,
