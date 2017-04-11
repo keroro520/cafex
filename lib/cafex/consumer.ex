@@ -8,7 +8,7 @@ defmodule Cafex.Consumer do
 
     * `consume(message, state)`
 
-    * `terminate(state)`
+    * `terminate(reason, state)`
   """
 
   @type state :: term
@@ -18,7 +18,7 @@ defmodule Cafex.Consumer do
 
   @callback consume(message :: Cafex.Protocol.Message.t, state) :: {done, state} | {:pause, timeout}
 
-  @callback terminate(state) :: :ok
+  @callback terminate(reason, state) :: :ok
 
   @doc false
   defmacro __using__(_) do
@@ -27,9 +27,9 @@ defmodule Cafex.Consumer do
 
       def init(args), do: {:ok, args}
       def consume(_msg, state), do: {:ok, state}
-      def terminate(_state), do: :ok
+      def terminate(_reason, _state), do: :ok
 
-      defoverridable [init: 1, consume: 2, terminate: 1]
+      defoverridable [init: 1, consume: 2, terminate: 2]
     end
   end
 end

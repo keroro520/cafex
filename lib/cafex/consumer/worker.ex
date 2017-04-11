@@ -163,11 +163,11 @@ defmodule Cafex.Consumer.Worker do
   end
 
   @doc false
-  def terminate(_reason, _state_name, %{handler: handler,
+  def terminate(reason, _state_name, %{handler: handler,
                                       handler_data: data} = state_data) do
     close_connection(state_data)
     release_lock(state_data)
-    if data, do: handler.terminate(data)
+    if data, do: handler.terminate(reason, data)
     :ok
   end
 
