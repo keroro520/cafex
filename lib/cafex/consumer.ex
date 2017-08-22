@@ -18,7 +18,7 @@ defmodule Cafex.Consumer do
 
   @callback consume(message :: Cafex.Protocol.Message.t, state) :: {done, state} | {:pause, timeout}
 
-  @callback terminate(reason, state) :: :ok
+  @callback terminate(reason :: term, state) :: :ok
 
   @doc false
   defmacro __using__(_) do
