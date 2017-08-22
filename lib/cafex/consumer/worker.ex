@@ -287,6 +287,9 @@ defmodule Cafex.Consumer.Worker do
       {:ok, data} ->
         OffsetManager.commit(coordinator, partition, offset + 1)
         do_consume(c - 1, %{state | buffer: rest, handler_data: data})
+      {:dirty_commit, data} ->
+        OffsetManager.dirty_commit(coordinator, partition, offset + 1)
+        do_consume(c - 1, %{state | buffer: rest, handler_data: data})
       {:nocommit, data} ->
         do_consume(c - 1, %{state | buffer: rest, handler_data: data})
       {:pause, timeout} ->

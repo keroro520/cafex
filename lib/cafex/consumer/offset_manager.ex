@@ -51,6 +51,10 @@ defmodule Cafex.Consumer.OffsetManager do
     GenServer.call pid, {:commit, partition, offset, metadata}, timeout
   end
 
+  def dirty_commit(pid, partition, offset, metadata \\ "", timeout \\ 5000) do
+    GenServer.call pid, {:dirty_commit, partition, offset, metadata}, timeout
+  end
+
   def fetch(pid, partition, leader_conn, timeout \\ 5000) do
     GenServer.call pid, {:fetch, partition, leader_conn}, timeout
   end
@@ -91,6 +95,15 @@ defmodule Cafex.Consumer.OffsetManager do
   def handle_call({:commit, partition, offset, metadata}, _from, state) do
     {reply, state} = schedule_commit(partition, offset, metadata, state)
     {:reply, reply, state}
+  end
+
+  def handle_call({:dirty_commit, partition, _, _}, _from, %{partitions: partitions} = state) when partition >= partitions do
+    {:reply, {:error, :unknown_partition}, state}
+  end
+  def handle_call({:dirty_commit, partition, offset, metadata}, _from, %{to_be_commit: to_be_commit} = state) do
+    to_be_commit = Map.put(to_be_commit, partition, {offset, metadata})
+    state = %{state | to_be_commit: to_be_commit}
+    {:reply, :ok, start_timer(state)}
   end
 
   def handle_call({:fetch, partition, _leader_conn}, _from, %{partitions: partitions} = state) when partition >= partitions do
