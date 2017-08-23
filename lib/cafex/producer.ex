@@ -64,11 +64,11 @@ defmodule Cafex.Producer do
   """
   @spec produce(producer :: atom, value :: binary, opts :: [Keyword.t]) :: :ok | {:error, term}
   def produce(producer, value, opts \\ []) do
-    key        = Keyword.get(opts, :key)
-    partition  = Keyword.get(opts, :partition)
-    metadata   = Keyword.get(opts, :metadata)
-    message    = %Message{key: key, value: value, partition: partition, metadata: metadata}
-    worker_pid = GenServer.call producer, {:get_worker, message}
+    key           = Keyword.get(opts, :key)
+    metadata      = Keyword.get(opts, :metadata)
+    partition_key = Keyword.get(opts, :partition_key)
+    message    = %Message{key: key, value: value, metadata: metadata}
+    worker_pid = GenServer.call producer, {:get_worker, partition_key}
     Cafex.Producer.Worker.produce(worker_pid, message)
   end
 
@@ -82,10 +82,10 @@ defmodule Cafex.Producer do
   @spec async_produce(producer :: atom, value :: binary, opts :: [Keyword.t]) :: :ok
   def async_produce(producer, value, opts \\ []) do
     key        = Keyword.get(opts, :key)
-    partition  = Keyword.get(opts, :partition)
+    partition_key = Keyword.get(opts, :partition_key)
 
-    message    = %Message{key: key, value: value, partition: partition}
-    worker_pid = GenServer.call producer, {:get_worker, message}
+    message    = %Message{key: key, value: value}
+    worker_pid = GenServer.call producer, {:get_worker, partition_key}
     Cafex.Producer.Worker.async_produce(worker_pid, message)
   end
 
@@ -131,8 +131,8 @@ defmodule Cafex.Producer do
                     partitioner_state: partitioner_state}}
   end
 
-  def handle_call({:get_worker, message}, _from, state) do
-    {worker, state} = dispatch(message, state)
+  def handle_call({:get_worker, partition_key}, _from, state) do
+    {worker, state} = dispatch(partition_key, state)
     {:reply, worker, state}
   end
 
@@ -163,18 +163,13 @@ defmodule Cafex.Producer do
   #  Internal functions
   # ===================================================================
 
-  defp dispatch(%{partition: nil} = message, %{partitioner: partitioner,
-                                               partitioner_state: partitioner_state,
-                                               workers: workers} = state) do
-    {partition, new_state} = partitioner.partition(message, partitioner_state)
+  defp dispatch(partition_key, %{partitioner: partitioner,
+                                 partitioner_state: partitioner_state,
+                                 workers: workers} = state) do
+    {partition, new_state} = partitioner.partition(partition_key, partitioner_state)
     # TODO: check partition availability
     worker_pid = Map.get(workers, partition)
     {worker_pid, %{state | partitioner_state: new_state}}
-  end
-  defp dispatch(%{partition: partition}, %{workers: workers} = state) do
-    # TODO: check partition availability
-    worker_pid = Map.get(workers, partition)
-    {worker_pid, state}
   end
 
   defp load_metadata(%{feed_brokers: brokers, topic_name: topic} = state) do
